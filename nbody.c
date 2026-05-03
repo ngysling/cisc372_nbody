@@ -6,11 +6,13 @@
 #include "config.h"
 #include "planets.h"
 #include "compute.h"
+#include <cuda_runtime.h>
 
 // represents the objects in the system.  Global variables
 vector3 *hVel, *d_hVel;
 vector3 *hPos, *d_hPos;
-double *mass;
+double *h_mass, *d_mass;
+void *d_matrix; 
 
 //initHostMemory: Create storage for numObjects entities in our system
 //Parameters: numObjects: number of objects to allocate
@@ -23,6 +25,30 @@ void initHostMemory(int numObjects)
 	mass = (double *)malloc(sizeof(double) * numObjects);
 }
 
+void initDevMemory(int numObjects)
+{
+	cudaError_t result; 
+	int sizeVector = sizeof(vector3) * numObjects; 
+	int sizeDouble = sizeof(double) * numObjects; 
+	int sizeMatrix = sizeof(vector3) * numObjects * numObjects; 
+	result = cudaMalloc(&d_hPos, sizeVector); 
+	if (result != cudaSuccess){ goto error; }
+	result = cudaMalloc(&d_hVel, sizeVector); 
+	if (result != cudaSuccess){ goto error;  }
+	result = cudaMalloc(&d_mass, sizeDouble); 
+	if (result != cudaSuccess){ goto error; }
+	result = cudaMalloc(&d_matrix, sizeMatrix); 
+	return; 
+error:
+	printf("Error allocating on device: %s\n", cudaGetErrorString(result)); 
+	return; 
+}
+
+void copyToDevice(int numObjects) { 
+	cudaMemcpy(d_hPos, hPos, sizeof(vector3) * numObjects, cudaMemcpyHostToDevice); 
+	cudaMemcpy(d_hVel, hVel, sizeof(vector3) * numObjects, cudaMemcpyHostToDevice); 
+	cudaMemcpy(d_mass, h_mass, sizeof(vector3) * numObjects, cudaMemcpyHostToDevice); 
+}
 //freeHostMemory: Free storage allocated by a previous call to initHostMemory
 //Parameters: None
 //Returns: None
