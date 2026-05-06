@@ -52,26 +52,29 @@ __global__ void sumMatrix(vector3* hPos, vector3* hVel, vector3* matrix, int N) 
 	__shared__ vector3 sharedSum[SHM_SIZE]; 
 	vector3 runningSum = {0,0,0}; 
 	for (int i = threadIdx.x; i < N; i += 256) { 
-		int j = blockIdx.x * blockDim.x + threadIdx.x; // col
+		int j = blockIdx.x * blockDim.x + i; 
 		if(i < N) { 
 			runningSum[0] += matrix[j][0] ;
 			runningSum[1] += matrix[j][1] ;
 			runningSum[2] += matrix[j][2] ;
 		}
 	}
-	sharedSum[threadIdx.x] = runningSum; 
+	sharedSum[threadIdx.x][0] = runningSum[0]; 
+	sharedSum[threadIdx.x][1] = runningSum[1]; 
+	sharedSum[threadIdx.x][2] = runningSum[2]; 
 	__syncthreads(); 
 	for (int s = 1; s < blockDim.x; s *= 2) {
 		if(threadIdx.x % (2 * s) == 0) { 
-			runningSum[threadIdx.x] += runningSum[threadIdx.x + s]; 
+			sharedSum[threadIdx.x][0] += sharedSum[threadIdx.x + s][0]; 
+			sharedSum[threadIdx.x][1] += sharedSum[threadIdx.x + s][1]; 
+			sharedSum[threadIdx.x][2] += sharedSum[threadIdx.x + s][2]; 
 		}
 		__syncthreads(); 
 	}
 	if(threadIdx.x == 0) { 
-		sum = &runningSum[0]; 
 		for (int k = 0; k<3; k++) {
-			hVel[i][k] += accel_sum[k] * INTERVAL; 
-			hPos[i][k] += hVel[i][k] * INTERVAL; 
+			hVel[blockIdx.x * blockDim.x + threadIdx.x][k] += sharedSum[0][k] * INTERVAL; 
+			hPos[blockIdx.x * blockDim.x + threadIdx.x][k] += hVel[blockIdx.x * blockDim.x + threadIdx.x][k] * INTERVAL; 
 		}
 	}
 }

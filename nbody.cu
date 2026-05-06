@@ -27,7 +27,7 @@ void initHostMemory(int numObjects)
 	h_mass = (double *)malloc(sizeof(double) * numObjects);
 }
 
-void initDeviceMemory(int numObjects)
+int initDeviceMemory(int numObjects)
 {
 	cudaError_t result; 
 	int sizeVector = sizeof(vector3) * numObjects; 
@@ -40,10 +40,10 @@ void initDeviceMemory(int numObjects)
 	result = cudaMalloc(&d_mass, sizeDouble); 
 	if (result != cudaSuccess){ goto error; }
 	result = cudaMalloc(&d_matrix, sizeMatrix); 
-	return; 
+	return 0; 
 error:
 	printf("Error allocating on device: %s\n", cudaGetErrorString(result)); 
-	return; 
+	return 1; 
 }
 
 void copyToDevice(int numObjects) { 
@@ -130,7 +130,10 @@ int main(int argc, char **argv)
 	//srand(time(NULL));
 	srand(1234);
 	initHostMemory(NUMENTITIES);
-	initDeviceMemory(NUMENTITIES); 
+	int	err = initDeviceMemory(NUMENTITIES); 
+	if(err != 0) { 
+		printf("Error in device memory allocation"); 
+ 	} 
 	planetFill();
 	copyToDevice(NUMENTITIES); 
 	randomFill(NUMPLANETS + 1, NUMASTEROIDS);
