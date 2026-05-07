@@ -49,7 +49,11 @@ error:
 void copyToDevice(int numObjects) { 
 	cudaMemcpy(d_hPos, hPos, sizeof(vector3) * numObjects, cudaMemcpyHostToDevice); 
 	cudaMemcpy(d_hVel, hVel, sizeof(vector3) * numObjects, cudaMemcpyHostToDevice); 
-	cudaMemcpy(d_mass, h_mass, sizeof(vector3) * numObjects, cudaMemcpyHostToDevice); 
+	cudaMemcpy(d_mass, h_mass, sizeof(double) * numObjects, cudaMemcpyHostToDevice); 
+}
+void copyToHost(int numObjects) { 
+	cudaMemcpy(hPos, d_hPos, sizeof(vector3) * numObjects, cudaMemcpyDeviceToHost); 
+	cudaMemcpy(hVel, d_hVel, sizeof(vector3) * numObjects, cudaMemcpyDeviceToHost); 
 }
 //freeHostMemory: Free storage allocated by a previous call to initHostMemory
 //Parameters: None
@@ -135,8 +139,8 @@ int main(int argc, char **argv)
 		printf("Error in device memory allocation"); 
  	} 
 	planetFill();
-	copyToDevice(NUMENTITIES); 
 	randomFill(NUMPLANETS + 1, NUMASTEROIDS);
+	copyToDevice(NUMENTITIES); 
 	//now we have a system.
 	#ifdef DEBUG
 	printSystem(stdout);
@@ -145,10 +149,14 @@ int main(int argc, char **argv)
 	int blocksPerGrid = (NUMENTITIES + threadsPerBlock - 1) / threadsPerBlock;
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute<<<blocksPerGrid,threadsPerBlock>>>(d_hPos, d_hVel, d_mass, d_matrix, NUMENTITIES); 
+		cudaDeviceSynchronize(); 
 		sumMatrix<<<blocksPerGrid,threadsPerBlock>>>(d_hPos, d_hVel, d_matrix, NUMENTITIES); 	
+		cudaDeviceSynchronize(); 
 	}
+	copyToHost(NUMENTITIES); 
 	clock_t t1=clock()-t0;
 #ifdef DEBUG
+	printf("--------- COMPUTED SYSTEM ----------\n"); 
 	printSystem(stdout);
 #endif
 	printf("This took a total time of %f seconds\n",(double)t1/CLOCKS_PER_SEC);
