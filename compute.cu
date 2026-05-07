@@ -30,6 +30,7 @@ __global__ void compute(vector3* pos, vector3* vel, double* mass, vector3* matri
 		}
 	}
 }
+/*
 __global__ void sumMatrix(vector3* hPos, vector3* hVel, vector3* matrix, int N) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if(i < N) {
@@ -46,20 +47,19 @@ __global__ void sumMatrix(vector3* hPos, vector3* hVel, vector3* matrix, int N) 
 		}
 	}
 }
+*/ 
 #define SIZE 256
 #define SHM_SIZE 256 // assuming 1 block of 1024 threads 
-/*
-Sums up a column of the matrix based
 __global__ void sumMatrix(vector3* hPos, vector3* hVel, vector3* matrix, int N) { 
 	__shared__ vector3 sharedSum[SHM_SIZE]; 
+	int planetIdx = blockIdx.x;
+	if(planetIdx >= N) return; 
 	vector3 runningSum = {0,0,0}; 
-	for (int i = threadIdx.x; i < N; i += 256) { 
-		int j = blockIdx.x * blockDim.x + i; 
-		if(i < N) { 
-			runningSum[0] += matrix[j][0] ;
-			runningSum[1] += matrix[j][1] ;
-			runningSum[2] += matrix[j][2] ;
-		}
+	for (int i = threadIdx.x; i < N; i += blockDim.x) { 
+		int matIndex = planetIdx * N + i; 
+		runningSum[0] += matrix[matIndex][0] ;
+		runningSum[1] += matrix[matIndex][1] ;
+		runningSum[2] += matrix[matIndex][2] ;
 	}
 	sharedSum[threadIdx.x][0] = runningSum[0]; 
 	sharedSum[threadIdx.x][1] = runningSum[1]; 
@@ -75,9 +75,8 @@ __global__ void sumMatrix(vector3* hPos, vector3* hVel, vector3* matrix, int N) 
 	}
 	if(threadIdx.x == 0) { 
 		for (int k = 0; k<3; k++) {
-			hVel[blockIdx.x * blockDim.x + threadIdx.x][k] += sharedSum[0][k] * INTERVAL; 
-			hPos[blockIdx.x * blockDim.x + threadIdx.x][k] += hVel[blockIdx.x * blockDim.x + threadIdx.x][k] * INTERVAL; 
+			hVel[planetIdx][k] += sharedSum[0][k] * INTERVAL; 
+			hPos[planetIdx][k] += hVel[planetIdx][k] * INTERVAL; 
 		}
 	}
 }
-*/

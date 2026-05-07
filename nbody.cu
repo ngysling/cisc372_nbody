@@ -150,7 +150,7 @@ int main(int argc, char **argv)
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute<<<blocksPerGrid,threadsPerBlock>>>(d_hPos, d_hVel, d_mass, d_matrix, NUMENTITIES); 
 		cudaDeviceSynchronize(); 
-		sumMatrix<<<blocksPerGrid,threadsPerBlock>>>(d_hPos, d_hVel, d_matrix, NUMENTITIES); 	
+		sumMatrix<<<NUMENTITIES,256>>>(d_hPos, d_hVel, d_matrix, NUMENTITIES); 	
 		cudaDeviceSynchronize(); 
 	}
 	copyToHost(NUMENTITIES); 
